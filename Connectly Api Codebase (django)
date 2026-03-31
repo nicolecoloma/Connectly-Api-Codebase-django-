@@ -1,0 +1,139 @@
+# ==============================
+# CONNECTLY API (DJANGO)
+# Basic CRUD for Users and Posts
+# ==============================
+
+# 1. Install requirements
+# pip install django djangorestframework
+
+# 2. Create project
+# django-admin startproject connectly
+# cd connectly
+# python manage.py startapp api
+
+# ==============================
+# settings.py (add apps)
+# ==============================
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'api',
+]
+
+# ==============================
+# models.py
+# ==============================
+from django.db import models
+
+class User(models.Model):
+    username = models.CharField(max_length=100)
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.username
+
+class Post(models.Model):
+    content = models.TextField()
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.content[:20]
+
+# ==============================
+# serializers.py
+# ==============================
+from rest_framework import serializers
+from .models import User, Post
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'
+
+class PostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = '__all__'
+
+# ==============================
+# views.py
+# ==============================
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import User, Post
+from .serializers import UserSerializer, PostSerializer
+
+# ----- USERS -----
+@api_view(['GET'])
+def get_users(request):
+    users = User.objects.all()
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def create_user(request):
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"id": serializer.data['id'], "message": "User created successfully"})
+    return Response(serializer.errors, status=400)
+
+# ----- POSTS -----
+@api_view(['GET'])
+def get_posts(request):
+    posts = Post.objects.all()
+    serializer = PostSerializer(posts, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def create_post(request):
+    serializer = PostSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"id": serializer.data['id'], "message": "Post created successfully"})
+    return Response(serializer.errors, status=400)
+
+# ==============================
+# urls.py (api app)
+# ==============================
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('users', views.get_users),
+    path('users/create', views.create_user),
+    path('posts', views.get_posts),
+    path('posts/create', views.create_post),
+]
+
+# ==============================
+# project urls.py
+# ==============================
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+]
+
+# ==============================
+# RUN COMMANDS
+# ==============================
+# python manage.py makemigrations
+# python manage.py migrate
+# python manage.py runserver
+
+# ==============================
+# SAMPLE API ENDPOINTS
+# ==============================
+# GET  http://127.0.0.1:8000/api/users
+# POST http://127.0.0.1:8000/api/users/create
+# GET  http://127.0.0.1:8000/api/posts
+# POST http://127.0.0.1:8000/api/posts/create
